@@ -1,45 +1,58 @@
-require('dotenv').config();
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-const serverless = require('serverless-http');
+const app = require('./api');
+const debug = require('debug')('code-review-bot:server');
+const http = require('http');
 
-var webhookRouter = require('./routes/webhook');
+const port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
 
-var app = express();
+const server = http.createServer(app);
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
 
-app.use('/webhook', webhookRouter);
+function normalizePort(val) {
+  const port = parseInt(val, 10);
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
-});
+  if (isNaN(port)) {
+    return val;
+  }
 
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+  if (port >= 0) {
+    return port;
+  }
 
-  // render the error page
-  res.status(err.status || 500);
-});
+  return false;
+}
 
-if (require.main === module) {
-  // 로컬 실행
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`Express server running on http://localhost:${PORT}`);
-  });
-} else {
-  // Vercel용 서버리스 핸들러 export
-  module.exports = serverless(app);
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  const bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+function onListening() {
+  const addr = server.address();
+  const bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+  console.log(`Server listening on ${bind}`);
 }
