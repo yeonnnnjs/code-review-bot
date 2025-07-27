@@ -4,14 +4,11 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const serverless = require('serverless-http');
 
 var webhookRouter = require('./routes/webhook');
 
 var app = express();
-
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -34,7 +31,15 @@ app.use(function(err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
-  res.render('error');
 });
 
-module.exports = app;
+if (require.main === module) {
+  // 로컬 실행
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Express server running on http://localhost:${PORT}`);
+  });
+} else {
+  // Vercel용 서버리스 핸들러 export
+  module.exports = serverless(app);
+}
